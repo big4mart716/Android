@@ -80,48 +80,43 @@ jobs:
           echo "PersonalCard 目录不存在"
         fi
     
-   # ==== 5. 准备构建环境 ====
-    - name: Prepare build environment
-      run: |
-        echo "准备构建环境..."
-        
-        # 检查是否需要创建 gradlew
-        if [ -f "PersonalCard/gradlew" ]; then
-          echo "gradlew 已存在"
-        else
-          echo "创建必要的 Gradle 文件..."
-          
-          # 在 PersonalCard 中创建根目录 build.gradle
-          if [ -d "PersonalCard" ] && [ ! -f "PersonalCard/build.gradle" ]; then
-            echo "创建 PersonalCard/build.gradle..."
+          # ==== 5. 准备构建环境 ====
+        - name: Prepare build environment
+          run: |
+            echo "准备构建环境..."
             
-            # 使用 echo 命令行逐行创建，避免 heredoc
-            echo '// Top-level build file' > PersonalCard/build.gradle
-            echo 'buildscript {' >> PersonalCard/build.gradle
-            echo '    repositories {' >> PersonalCard/build.gradle
-            echo '        google()' >> PersonalCard/build.gradle
-            echo '        mavenCentral()' >> PersonalCard/build.gradle
-            echo '    }' >> PersonalCard/build.gradle
-            echo '    dependencies {' >> PersonalCard/build.gradle
-            echo '        classpath "com.android.tools.build:gradle:8.1.0"' >> PersonalCard/build.gradle
-            echo '    }' >> PersonalCard/build.gradle
-            echo '}' >> PersonalCard/build.gradle
-            echo '' >> PersonalCard/build.gradle
-            echo 'allprojects {' >> PersonalCard/build.gradle
-            echo '    repositories {' >> PersonalCard/build.gradle
-            echo '        google()' >> PersonalCard/build.gradle
-            echo '        mavenCentral()' >> PersonalCard/build.gradle
-            echo '    }' >> PersonalCard/build.gradle
-            echo '}' >> PersonalCard/build.gradle
-          fi
-          
-          # 创建 settings.gradle
-          if [ -d "PersonalCard" ] && [ ! -f "PersonalCard/settings.gradle" ]; then
-            echo "创建 PersonalCard/settings.gradle..."
-            echo "include ':app'" > PersonalCard/settings.gradle
-            echo "rootProject.name = 'PersonalCard'" >> PersonalCard/settings.gradle
-          fi
-        fi
+            if [ -d "PersonalCard" ]; then
+              echo "检查 PersonalCard 目录..."
+              
+              # 如果已经有了 build.gradle，删除并重新创建
+              if [ -f "PersonalCard/build.gradle" ]; then
+                echo "备份并重新创建 build.gradle..."
+                mv PersonalCard/build.gradle PersonalCard/build.gradle.backup
+              fi
+              
+              # 创建更简单的 build.gradle
+              echo "创建简单的 build.gradle..."
+              echo '// Top-level build file' > PersonalCard/build.gradle
+              echo 'buildscript {' >> PersonalCard/build.gradle
+              echo '    dependencies {' >> PersonalCard/build.gradle
+              echo '        classpath "com.android.tools.build:gradle:8.1.0"' >> PersonalCard/build.gradle
+              echo '    }' >> PersonalCard/build.gradle
+              echo '}' >> PersonalCard/build.gradle
+              
+              # 检查是否需要创建 settings.gradle
+              if [ ! -f "PersonalCard/settings.gradle" ]; then
+                echo "创建 settings.gradle..."
+                echo "include ':app'" > PersonalCard/settings.gradle
+                echo "rootProject.name = 'PersonalCard'" >> PersonalCard/settings.gradle
+                echo "dependencyResolutionManagement {" >> PersonalCard/settings.gradle
+                echo "    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)" >> PersonalCard/settings.gradle
+                echo "    repositories {" >> PersonalCard/settings.gradle
+                echo "        google()" >> PersonalCard/settings.gradle
+                echo "        mavenCentral()" >> PersonalCard/settings.gradle
+                echo "    }" >> PersonalCard/settings.gradle
+                echo "}" >> PersonalCard/settings.gradle
+              fi
+            fi
 
     # ==== 6. 构建 PersonalCard 项目 ====
     - name: Build PersonalCard project
