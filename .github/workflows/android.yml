@@ -42,11 +42,10 @@ jobs:
     
     # ==== 3. 可选安装额外的包（不失败）===
     - name: Install optional packages
-      continue-on-error: true  # 这个步骤失败不影响整体
+      continue-on-error: true
       run: |
         echo "Installing optional packages..."
         
-        # 尝试安装一些可能有用的包，但允许失败
         optional_packages=(
           "patcher;v4"
           "platforms;android-34-ext4"
@@ -61,6 +60,7 @@ jobs:
           sdkmanager "$pkg" --verbose 2>/dev/null && echo "✓ $pkg installed" || echo "⚠ $pkg not found, skipping"
         done
     
+    # ==== 4. 修复的检查项目文件步骤 ====
     - name: Check project files
       run: |
         echo "=== Project structure ==="
@@ -76,46 +76,48 @@ jobs:
         else
           echo "No Android project found. Creating minimal example..."
           
-          # 创建最简单的 Android 项目结构
+          # 创建目录
           mkdir -p app/src/main/java/com/example/app
           mkdir -p app/src/main/res
           
+          # 修复：使用 <<'EOF' 防止变量扩展
           cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-          }
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.app'
+    compileSdk 34
+    
+    defaultConfig {
+        applicationId "com.example.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+}
+EOF
           
-          android {
-              namespace 'com.example.app'
-              compileSdk 34
-              
-              defaultConfig {
-                  applicationId "com.example.app"
-                  minSdk 24
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-              }
-              
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
-          }
-          
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.10.0'
-          }
-          EOF
-          
+          # 修复：使用 <<'EOF' 防止变量扩展
           cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:allowBackup="true" />
-          </manifest>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:allowBackup="true" />
+</manifest>
+EOF
           
           echo "Minimal Android project created"
         fi
