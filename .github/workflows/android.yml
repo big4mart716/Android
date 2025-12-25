@@ -22,24 +22,45 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
-    # ==== 步骤1：先安装 Android SDK ====
-    - name: Setup Android SDK
+    # ==== 1. 先安装 Android SDK 命令行工具 ====
+    - name: Setup Android SDK Command Line Tools
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: '12.0'
-        accept-android-sdk-licenses: true  # ← 让 Action 自动处理许可证
-        packages: |
-          platform-tools
-          platforms;android-33
-          build-tools;33.0.0
+        accept-android-sdk-licenses: true
     
-    # ==== 步骤2：检查安装结果 ====
-    - name: Verify Android SDK installation
+    # ==== 2. 验证可用的包 ====
+    - name: List available packages
       run: |
-        echo "Checking Android SDK installation..."
-        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-        echo "sdkmanager path: $(which sdkmanager)"
-        sdkmanager --list
+        echo "Listing available Android packages..."
+        sdkmanager --list --verbose
+    
+    # ==== 3. 分步安装必要的包 ====
+    - name: Install Android platform tools
+      run: |
+        echo "Installing platform-tools..."
+        sdkmanager "platform-tools" --verbose
+    
+    - name: Install Android SDK platform
+      run: |
+        echo "Installing Android SDK platform..."
+        # 尝试安装最新的稳定版本
+        sdkmanager "platforms;android-34" --verbose || \
+        sdkmanager "platforms;android-33" --verbose || \
+        sdkmanager "platforms;android-32" --verbose
+    
+    - name: Install build tools
+      run: |
+        echo "Installing build tools..."
+        sdkmanager "build-tools;34.0.0" --verbose || \
+        sdkmanager "build-tools;33.0.0" --verbose || \
+        sdkmanager "build-tools;32.0.0" --verbose
+    
+    - name: Install additional required packages
+      run: |
+        echo "Installing additional packages..."
+        sdkmanager "patcher;v4" --verbose
+        sdkmanager "platforms;android-34-ext4" --verbose
     
     - name: Check project files
       run: |
@@ -56,7 +77,6 @@ jobs:
     - name: Try to build
       run: |
         echo "Attempting to build..."
-        # 尝试各种构建方式
         if [ -f "./gradlew" ]; then
           chmod +x ./gradlew
           ./gradlew assembleDebug || echo "gradlew failed"
