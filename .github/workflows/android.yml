@@ -60,66 +60,38 @@ jobs:
           sdkmanager "$pkg" --verbose 2>/dev/null && echo "✓ $pkg installed" || echo "⚠ $pkg not found, skipping"
         done
     
-    # ==== 4. 修复的检查项目文件步骤 ====
+    # ==== 4. 修复的检查项目文件步骤（使用 echo 方法） ====
     - name: Check project files
       run: |
         echo "=== Project structure ==="
         ls -la
         echo ""
         
-        # 检查是否有 Android 项目
         if [ -f "app/build.gradle" ] || [ -f "build.gradle" ]; then
           echo "Android project detected"
-          
-          # 列出 gradle 文件
           find . -name "*.gradle*" -type f 2>/dev/null
         else
-          echo "No Android project found. Creating minimal example..."
+          echo "No Android project found. Creating simple test project..."
           
-          # 创建目录
-          mkdir -p app/src/main/java/com/example/app
-          mkdir -p app/src/main/res
+          mkdir -p app/src/main/java/com/example
           
-          # 修复：使用 <<'EOF' 防止变量扩展
-          cat > app/build.gradle << 'EOF'
-plugins {
-    id 'com.android.application'
-}
-
-android {
-    namespace 'com.example.app'
-    compileSdk 34
-    
-    defaultConfig {
-        applicationId "com.example.app"
-        minSdk 24
-        targetSdk 34
-        versionCode 1
-        versionName "1.0"
-    }
-    
-    buildTypes {
-        release {
-            minifyEnabled false
-        }
-    }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
-}
-EOF
+          # 使用 echo 命令逐行创建，避免 heredoc
+          echo 'plugins {' > app/build.gradle
+          echo '    id "com.android.application"' >> app/build.gradle
+          echo '}' >> app/build.gradle
+          echo '' >> app/build.gradle
+          echo 'android {' >> app/build.gradle
+          echo '    namespace "com.example.test"' >> app/build.gradle
+          echo '    compileSdk 34' >> app/build.gradle
+          echo '' >> app/build.gradle
+          echo '    defaultConfig {' >> app/build.gradle
+          echo '        applicationId "com.example.test"' >> app/build.gradle
+          echo '        minSdk 24' >> app/build.gradle
+          echo '        targetSdk 34' >> app/build.gradle
+          echo '    }' >> app/build.gradle
+          echo '}' >> app/build.gradle
           
-          # 修复：使用 <<'EOF' 防止变量扩展
-          cat > app/src/main/AndroidManifest.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="true" />
-</manifest>
-EOF
-          
-          echo "Minimal Android project created"
+          echo "Test project created"
         fi
     
     - name: Try to build
@@ -132,12 +104,11 @@ EOF
           ./gradlew assembleDebug
         elif [ -f "build.gradle" ] || [ -f "app/build.gradle" ]; then
           echo "Using global gradle"
-          gradle assembleDebug || ./gradlew assembleDebug || echo "Build failed"
+          gradle assembleDebug || echo "Build failed"
         else
-          echo "No build files found. Listing directory:"
-          ls -la
-          echo "Creating test build..."
-          echo 'task hello { doLast { println "Hello from Gradle!" } }' > build.gradle
+          echo "No build files found"
+          echo "Creating test build.gradle..."
+          echo 'task hello { doLast { println "Hello Android!" } }' > build.gradle
           gradle hello
         fi
     
