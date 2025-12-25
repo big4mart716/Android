@@ -20,10 +20,21 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
+    # ==== 关键修复：添加许可证接受步骤 ====
+    - name: Accept Android SDK licenses
+      run: |
+        yes | sdkmanager --licenses || true
+        # 或者使用以下方法之一：
+        # 1. 设置环境变量跳过
+        # mkdir -p ~/.android
+        # touch ~/.android/repositories.cfg
+        # echo "count=0" > ~/.android/repositories.cfg
+    
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: '12.0'
+        accept-android-sdk-licenses: true  # 这个参数很重要
         packages: |
           platform-tools
           platforms;android-33
