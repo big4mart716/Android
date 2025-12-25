@@ -92,6 +92,10 @@ jobs:
           echo "创建 build.gradle（不包含仓库）..."
           echo '// Top-level build file' > PersonalCard/build.gradle
           echo 'buildscript {' >> PersonalCard/build.gradle
+          echo '    repositories {' >> PersonalCard/build.gradle
+          echo '        google()' >> PersonalCard/build.gradle
+          echo '        mavenCentral()' >> PersonalCard/build.gradle
+          echo '    }' >> PersonalCard/build.gradle
           echo '    dependencies {' >> PersonalCard/build.gradle
           echo '        classpath "com.android.tools.build:gradle:8.1.0"' >> PersonalCard/build.gradle
           echo '    }' >> PersonalCard/build.gradle
