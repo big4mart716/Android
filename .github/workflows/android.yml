@@ -22,40 +22,24 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
-    # ==== 修复的许可证接受步骤 ====
-    - name: Accept Android SDK licenses
-      run: |
-        echo "Starting Android SDK license acceptance..."
-        
-        # 方法1：使用 expect 工具
-        sudo apt-get update
-        sudo apt-get install -y expect
-        
-        # 创建自动应答脚本
-        cat > /tmp/accept.exp << 'EOF'
-        set timeout -1
-        spawn sdkmanager --licenses
-        expect {
-          "y/N" { 
-            send "y\r"
-            exp_continue 
-          }
-          timeout { exit 1 }
-          eof
-        }
-        EOF
-        
-        expect /tmp/accept.exp
-        echo "License acceptance completed"
-    
+    # ==== 步骤1：先安装 Android SDK ====
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: '12.0'
+        accept-android-sdk-licenses: true  # ← 让 Action 自动处理许可证
         packages: |
           platform-tools
           platforms;android-33
           build-tools;33.0.0
+    
+    # ==== 步骤2：检查安装结果 ====
+    - name: Verify Android SDK installation
+      run: |
+        echo "Checking Android SDK installation..."
+        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "sdkmanager path: $(which sdkmanager)"
+        sdkmanager --list
     
     - name: Check project files
       run: |
