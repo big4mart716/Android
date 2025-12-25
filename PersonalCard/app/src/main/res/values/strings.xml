@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">个人名片</string>
+    <string name="welcome_title">欢迎使用个人名片应用</string>
+    <string name="welcome_desc">这是一个简单的个人信息管理应用</string>
+    <string name="btn_start">开始创建名片</string>
+    <string name="input_title">填写个人信息</string>
+    <string name="hint_name">请输入姓名</string>
+    <string name="hint_student_id">请输入学号</string>
+    <string name="hint_major">请输入专业</string>
+    <string name="hint_phone">请输入联系电话</string>
+    <string name="hint_email">请输入电子邮箱</string>
+    <string name="btn_submit">提交信息</string>
+    <string name="display_title">我的名片</string>
+    <string name="label_name">姓名：</string>
+    <string name="label_student_id">学号：</string>
+    <string name="label_major">专业：</string>
+    <string name="label_phone">电话：</string>
+    <string name="label_email">邮箱：</string>
+    <string name="btn_back">返回首页</string>
+    <string name="toast_fill_all">请填写所有信息</string>
+</resources>
