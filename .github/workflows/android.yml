@@ -60,84 +60,120 @@ jobs:
           sdkmanager "$pkg" --verbose 2>/dev/null && echo "✓ $pkg installed" || echo "⚠ $pkg not found, skipping"
         done
     
-    # ==== 4. 修复的检查项目文件步骤（使用 echo 方法） ====
-    - name: Check project files
+    # ==== 4. 检查实际项目结构 ====
+    - name: Check project structure
       run: |
-        echo "=== Project structure ==="
+        echo "=== 项目根目录结构 ==="
         ls -la
         echo ""
         
-        if [ -f "app/build.gradle" ] || [ -f "build.gradle" ]; then
-          echo "Android project detected"
-          find . -name "*.gradle*" -type f 2>/dev/null
+        echo "=== PersonalCard 目录结构 ==="
+        if [ -d "PersonalCard" ]; then
+          ls -la PersonalCard/
+          
+          echo ""
+          echo "=== PersonalCard 中的 app 目录 ==="
+          if [ -d "PersonalCard/app" ]; then
+            ls -la PersonalCard/app/
+          fi
         else
-          echo "No Android project found. Creating simple test project..."
-          
-          mkdir -p app/src/main/java/com/example
-          
-          # 使用 echo 命令逐行创建，避免 heredoc
-          echo 'plugins {' > app/build.gradle
-          echo '    id "com.android.application"' >> app/build.gradle
-          echo '}' >> app/build.gradle
-          echo '' >> app/build.gradle
-          echo 'android {' >> app/build.gradle
-          echo '    namespace "com.example.test"' >> app/build.gradle
-          echo '    compileSdk 34' >> app/build.gradle
-          echo '' >> app/build.gradle
-          echo '    defaultConfig {' >> app/build.gradle
-          echo '        applicationId "com.example.test"' >> app/build.gradle
-          echo '        minSdk 24' >> app/build.gradle
-          echo '        targetSdk 34' >> app/build.gradle
-          echo '    }' >> app/build.gradle
-          echo '}' >> app/build.gradle
-          
-          echo "Test project created"
+          echo "PersonalCard 目录不存在"
         fi
     
-    - name: Try to build
+   # ==== 5. 准备构建环境 ====
+    - name: Prepare build environment
       run: |
-        echo "Attempting to build Android project..."
-        # 检查当前目录
-        echo "Current directory: $(pwd)"
-        ls -la
-
-        # 尝试在 app/ 目录构建
-        if [ -f "app/build.gradle" ]; then
-        echo "Building app module..."
-        cd app
-        ./gradlew assembleDebug || gradle assembleDebug
-        elif [ -f "build.gradle" ]; then
-        echo "Building root project..."
-        ./gradlew assembleDebug || gradle assembleDebug
+        echo "准备构建环境..."
+        
+        # 检查是否需要创建 gradlew
+        if [ -f "PersonalCard/gradlew" ]; then
+          echo "gradlew 已存在"
         else
-        echo "No build files found"
+          echo "创建必要的 Gradle 文件..."
+          
+          # 在 PersonalCard 中创建根目录 build.gradle
+          if [ -d "PersonalCard" ] && [ ! -f "PersonalCard/build.gradle" ]; then
+            echo "创建 PersonalCard/build.gradle..."
+            
+            # 使用 echo 命令行逐行创建，避免 heredoc
+            echo '// Top-level build file' > PersonalCard/build.gradle
+            echo 'buildscript {' >> PersonalCard/build.gradle
+            echo '    repositories {' >> PersonalCard/build.gradle
+            echo '        google()' >> PersonalCard/build.gradle
+            echo '        mavenCentral()' >> PersonalCard/build.gradle
+            echo '    }' >> PersonalCard/build.gradle
+            echo '    dependencies {' >> PersonalCard/build.gradle
+            echo '        classpath "com.android.tools.build:gradle:8.1.0"' >> PersonalCard/build.gradle
+            echo '    }' >> PersonalCard/build.gradle
+            echo '}' >> PersonalCard/build.gradle
+            echo '' >> PersonalCard/build.gradle
+            echo 'allprojects {' >> PersonalCard/build.gradle
+            echo '    repositories {' >> PersonalCard/build.gradle
+            echo '        google()' >> PersonalCard/build.gradle
+            echo '        mavenCentral()' >> PersonalCard/build.gradle
+            echo '    }' >> PersonalCard/build.gradle
+            echo '}' >> PersonalCard/build.gradle
+          fi
+          
+          # 创建 settings.gradle
+          if [ -d "PersonalCard" ] && [ ! -f "PersonalCard/settings.gradle" ]; then
+            echo "创建 PersonalCard/settings.gradle..."
+            echo "include ':app'" > PersonalCard/settings.gradle
+            echo "rootProject.name = 'PersonalCard'" >> PersonalCard/settings.gradle
+          fi
+        fi
+
+    # ==== 6. 构建 PersonalCard 项目 ====
+    - name: Build PersonalCard project
+      run: |
+        echo "开始构建 PersonalCard 项目..."
+        
+        if [ -d "PersonalCard" ]; then
+          echo "切换到 PersonalCard 目录..."
+          cd PersonalCard
+          
+          echo "当前目录: $(pwd)"
+          echo "项目结构:"
+          ls -la
+          
+          # 安装 Gradle 并创建 gradlew
+          if [ ! -f "./gradlew" ]; then
+            echo "安装 Gradle 并生成 gradlew..."
+            wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+            unzip -q gradle-8.5-bin.zip
+            ./gradle-8.5/bin/gradle wrapper
+            chmod +x ./gradlew
+          fi
+          
+          # 开始构建
+          echo "开始构建..."
+          ./gradlew assembleDebug
+        else
+          echo "错误：找不到 PersonalCard 目录"
+          exit 1
         fi
     
-    # ==== 5. 添加调试步骤，检查构建输出 ====
+    # ==== 7. 检查构建输出 ====
     - name: Check build outputs
       run: |
         echo "=== 查找生成的 APK 文件 ==="
-        # 在 app/ 目录中查找
         
-        echo ""
-        if [ -d "app/build/outputs" ]; then
-        echo "在 app/build/outputs/ 中查找..."
-        find app/build/outputs/ -name "*.apk" 2>/dev/null
+        if [ -d "PersonalCard/app/build/outputs" ]; then
+          echo "在 PersonalCard/app/build/outputs/ 中查找..."
+          find PersonalCard/app/build/outputs/ -name "*.apk" 2>/dev/null
+          
+          echo ""
+          echo "=== APK 文件详情 ==="
+          find PersonalCard/app/build/outputs/ -name "*.apk" -exec ls -la {} \; 2>/dev/null
+        else
+          echo "PersonalCard/app/build/outputs/ 不存在"
         fi
-        # 在当前目录查找
-        find . -name "*.apk" 2>/dev/null || echo "没有找到 APK 文件"
-        echo ""
-        
-        echo ""
-        echo "=== 查看可能的构建输出 ==="
-        find . -type d -name "outputs" 2>/dev/null
     
-    # ==== 6. 修正的 Upload artifacts 步骤 ====
+    # ==== 8. 上传构建产物 ====
     - name: Upload artifacts
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: android-build
-        path: |
-          app/build/outputs/apk/
-          app/build/reports/
+        name: personalcard-apk
+        path: PersonalCard/app/build/outputs/apk/
+        if-no-files-found: warn
