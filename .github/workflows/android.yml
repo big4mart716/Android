@@ -86,31 +86,31 @@ jobs:
         echo "准备构建环境..."
         
         if [ -d "PersonalCard" ]; then
-          echo "修复 build.gradle 文件..."
+          echo "修复构建配置..."
           
-          # 创建正确的 build.gradle
-          echo "创建正确的 build.gradle..."
+          # 方案1：创建不包含 repositories 的 build.gradle
+          echo "创建 build.gradle（不包含仓库）..."
           echo '// Top-level build file' > PersonalCard/build.gradle
           echo 'buildscript {' >> PersonalCard/build.gradle
-          echo '    repositories {' >> PersonalCard/build.gradle
-          echo '        google()' >> PersonalCard/build.gradle
-          echo '        mavenCentral()' >> PersonalCard/build.gradle
-          echo '    }' >> PersonalCard/build.gradle
           echo '    dependencies {' >> PersonalCard/build.gradle
           echo '        classpath "com.android.tools.build:gradle:8.1.0"' >> PersonalCard/build.gradle
           echo '    }' >> PersonalCard/build.gradle
           echo '}' >> PersonalCard/build.gradle
           
-          # 添加 allprojects 配置
-          echo '' >> PersonalCard/build.gradle
-          echo 'allprojects {' >> PersonalCard/build.gradle
-          echo '    repositories {' >> PersonalCard/build.gradle
-          echo '        google()' >> PersonalCard/build.gradle
-          echo '        mavenCentral()' >> PersonalCard/build.gradle
-          echo '    }' >> PersonalCard/build.gradle
-          echo '}' >> PersonalCard/build.gradle
+          # 方案2：确保 settings.gradle 允许项目仓库
+          echo "修复 settings.gradle..."
+          echo "include ':app'" > PersonalCard/settings.gradle
+          echo "rootProject.name = 'PersonalCard'" >> PersonalCard/settings.gradle
+          echo "" >> PersonalCard/settings.gradle
+          echo "dependencyResolutionManagement {" >> PersonalCard/settings.gradle
+          echo "    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)" >> PersonalCard/settings.gradle
+          echo "    repositories {" >> PersonalCard/settings.gradle
+          echo "        google()" >> PersonalCard/settings.gradle
+          echo "        mavenCentral()" >> PersonalCard/settings.gradle
+          echo "    }" >> PersonalCard/settings.gradle
+          echo "}" >> PersonalCard/settings.gradle
           
-          echo "build.gradle 修复完成"
+          echo "构建配置修复完成"
         fi
     # ==== 6. 构建 PersonalCard 项目 ====
     - name: Build PersonalCard project
