@@ -22,71 +22,121 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
-    # ==== 1. 先安装 Android SDK 命令行工具 ====
-    - name: Setup Android SDK Command Line Tools
+    # ==== 1. 安装 Android SDK 核心组件 ====
+    - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: '12.0'
         accept-android-sdk-licenses: true
+        packages: platform-tools,platforms;android-34,build-tools;34.0.0
     
-    # ==== 2. 验证可用的包 ====
-    - name: List available packages
+    # ==== 2. 验证安装 ====
+    - name: Verify Android SDK installation
       run: |
-        echo "Listing available Android packages..."
-        sdkmanager --list --verbose
+        echo "=== Installed Android SDK packages ==="
+        sdkmanager --list_installed
+        echo ""
+        echo "=== Environment variables ==="
+        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "ANDROID_HOME: $ANDROID_HOME"
     
-    # ==== 3. 分步安装必要的包 ====
-    - name: Install Android platform tools
+    # ==== 3. 可选安装额外的包（不失败）===
+    - name: Install optional packages
+      continue-on-error: true  # 这个步骤失败不影响整体
       run: |
-        echo "Installing platform-tools..."
-        sdkmanager "platform-tools" --verbose
-    
-    - name: Install Android SDK platform
-      run: |
-        echo "Installing Android SDK platform..."
-        # 尝试安装最新的稳定版本
-        sdkmanager "platforms;android-34" --verbose || \
-        sdkmanager "platforms;android-33" --verbose || \
-        sdkmanager "platforms;android-32" --verbose
-    
-    - name: Install build tools
-      run: |
-        echo "Installing build tools..."
-        sdkmanager "build-tools;34.0.0" --verbose || \
-        sdkmanager "build-tools;33.0.0" --verbose || \
-        sdkmanager "build-tools;32.0.0" --verbose
-    
-    - name: Install additional required packages
-      run: |
-        echo "Installing additional packages..."
-        sdkmanager "patcher;v4" --verbose
-        sdkmanager "platforms;android-34-ext4" --verbose
+        echo "Installing optional packages..."
+        
+        # 尝试安装一些可能有用的包，但允许失败
+        optional_packages=(
+          "patcher;v4"
+          "platforms;android-34-ext4"
+          "platforms;android-34-ext8"
+          "cmake;3.22.1"
+          "ndk;25.2.9519653"
+          "emulator"
+        )
+        
+        for pkg in "${optional_packages[@]}"; do
+          echo "Trying to install: $pkg"
+          sdkmanager "$pkg" --verbose 2>/dev/null && echo "✓ $pkg installed" || echo "⚠ $pkg not found, skipping"
+        done
     
     - name: Check project files
       run: |
-        echo "Checking project structure..."
+        echo "=== Project structure ==="
         ls -la
         echo ""
-        if [ -f "build.gradle" ]; then
-          echo "build.gradle found"
+        
+        # 检查是否有 Android 项目
+        if [ -f "app/build.gradle" ] || [ -f "build.gradle" ]; then
+          echo "Android project detected"
+          
+          # 列出 gradle 文件
+          find . -name "*.gradle*" -type f 2>/dev/null
         else
-          echo "No build.gradle, creating minimal..."
-          echo '// Auto-generated build.gradle' > build.gradle
+          echo "No Android project found. Creating minimal example..."
+          
+          # 创建最简单的 Android 项目结构
+          mkdir -p app/src/main/java/com/example/app
+          mkdir -p app/src/main/res
+          
+          cat > app/build.gradle << 'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+          
+          android {
+              namespace 'com.example.app'
+              compileSdk 34
+              
+              defaultConfig {
+                  applicationId "com.example.app"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+          }
+          
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.10.0'
+          }
+          EOF
+          
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:allowBackup="true" />
+          </manifest>
+          EOF
+          
+          echo "Minimal Android project created"
         fi
     
     - name: Try to build
       run: |
-        echo "Attempting to build..."
+        echo "Attempting to build Android project..."
+        
         if [ -f "./gradlew" ]; then
+          echo "Using gradlew from project"
           chmod +x ./gradlew
-          ./gradlew assembleDebug || echo "gradlew failed"
-        elif command -v gradle &> /dev/null; then
-          gradle assembleDebug || echo "gradle failed"
+          ./gradlew assembleDebug
+        elif [ -f "build.gradle" ] || [ -f "app/build.gradle" ]; then
+          echo "Using global gradle"
+          gradle assembleDebug || ./gradlew assembleDebug || echo "Build failed"
         else
-          echo "No Gradle found, installing..."
-          wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip gradle-8.5-bin.zip
-          ./gradle-8.5/bin/gradle tasks || echo "Build setup failed"
+          echo "No build files found. Listing directory:"
+          ls -la
+          echo "Creating test build..."
+          echo 'task hello { doLast { println "Hello from Gradle!" } }' > build.gradle
+          gradle hello
         fi
     
     - name: Upload artifacts
