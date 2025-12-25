@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
     - uses: actions/checkout@v4
@@ -20,90 +22,56 @@ jobs:
         distribution: 'temurin'
         cache: gradle
     
-    # ==== 关键修复：添加许可证接受步骤 ====
-    - name: Accept Android SDK licenses
+    # ==== 核心修复：提前接受所有许可证 ====
+    - name: Accept all Android SDK licenses
       run: |
-        yes | sdkmanager --licenses || true
-        # 或者使用以下方法之一：
-        # 1. 设置环境变量跳过
-        # mkdir -p ~/.android
-        # touch ~/.android/repositories.cfg
-        # echo "count=0" > ~/.android/repositories.cfg
+        # 确保目录存在
+        mkdir -p $ANDROID_SDK_ROOT/licenses
+        
+        # 接受所有已知许可证
+        echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_SDK_ROOT/licenses/android-sdk-license
+        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $ANDROID_SDK_ROOT/licenses/android-sdk-license
+        echo "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license
+        
+        # 非交互式接受
+        (while sleep 3; do echo "y"; done) | sdkmanager --licenses > /dev/null 2>&1 || true
+        
+        echo "Android SDK licenses accepted"
     
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: '12.0'
-        accept-android-sdk-licenses: true  # 这个参数很重要
+        accept-android-sdk-licenses: true
         packages: |
           platform-tools
           platforms;android-33
           build-tools;33.0.0
-          cmdline-tools;latest
     
-    - name: Auto-generate gradle wrapper
-      id: gradle-wrapper
+    - name: Check project structure
       run: |
-        # 检查是否已经有 gradlew
-        if [ -f "./gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
-          echo "Gradle wrapper already exists"
-          echo "exists=true" >> $GITHUB_OUTPUT
-        else
-          echo "Generating new gradle wrapper..."
-          
-          # 创建必要的目录结构
-          mkdir -p gradle/wrapper
-          
-          # 如果项目缺少 build.gradle 和 settings.gradle
-          if [ ! -f "build.gradle" ]; then
-            cat > build.gradle << 'EOF'
-            buildscript {
-                repositories {
-                    google()
-                    mavenCentral()
-                }
-                dependencies {
-                    classpath "com.android.tools.build:gradle:8.1.0"
-                }
-            }
-            allprojects {
-                repositories {
-                    google()
-                    mavenCentral()
-                }
-            }
-            task wrapper(type: Wrapper) {
-                gradleVersion = '8.5'
-            }
-            EOF
-          fi
-          
-          if [ ! -f "settings.gradle" ]; then
-            echo "rootProject.name = 'AndroidApp'" > settings.gradle
-          fi
-          
-          # 生成 wrapper
-          gradle wrapper
-          
-          echo "Gradle wrapper generated"
-          echo "exists=false" >> $GITHUB_OUTPUT
-        fi
-      continue-on-error: true
+        echo "Project structure:"
+        ls -la
+        echo ""
+        echo "Looking for gradle files:"
+        find . -name "*.gradle*" -type f 2>/dev/null || echo "No gradle files found"
     
-    - name: Build Android App
+    - name: Build with Gradle
       run: |
+        # 如果存在 gradlew 就使用，否则安装 gradle
         if [ -f "./gradlew" ]; then
+          chmod +x ./gradlew
           ./gradlew assembleDebug
         else
-          echo "Using global gradle"
-          gradle assembleDebug
+          # 安装 gradle
+          wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip gradle-8.5-bin.zip
+          ./gradle-8.5/bin/gradle assembleDebug || gradle assembleDebug
         fi
     
-    - name: Upload build artifacts
+    - name: Upload APK
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: android-build
-        path: |
-          app/build/outputs/apk/
-          app/build/reports/
+        name: app-debug-apk
+        path: app/build/outputs/apk/debug/*.apk
