@@ -18,51 +18,80 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: gradle
     
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      with:
+        packages: |
+          platform-tools
+          platforms;android-33
+          build-tools;33.0.0
+          cmdline-tools;latest
     
-    - name: Generate gradlew if missing
+    - name: Auto-generate gradle wrapper
+      id: gradle-wrapper
       run: |
-        # 如果项目中没有 gradlew，自动生成
-        if [ ! -f "./gradlew" ]; then
-          echo "gradlew not found, generating gradle wrapper..."
+        # 检查是否已经有 gradlew
+        if [ -f "./gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.properties" ]; then
+          echo "Gradle wrapper already exists"
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "Generating new gradle wrapper..."
           
-          # 1. 下载 gradlew 脚本
-          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradlew -o gradlew
-          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradlew.bat -o gradlew.bat
-          
-          # 2. 创建 gradle/wrapper 目录
+          # 创建必要的目录结构
           mkdir -p gradle/wrapper
           
-          # 3. 下载 gradle-wrapper.jar
-          curl -L https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+          # 如果项目缺少 build.gradle 和 settings.gradle
+          if [ ! -f "build.gradle" ]; then
+            cat > build.gradle << 'EOF'
+            buildscript {
+                repositories {
+                    google()
+                    mavenCentral()
+                }
+                dependencies {
+                    classpath "com.android.tools.build:gradle:8.1.0"
+                }
+            }
+            allprojects {
+                repositories {
+                    google()
+                    mavenCentral()
+                }
+            }
+            task wrapper(type: Wrapper) {
+                gradleVersion = '8.5'
+            }
+            EOF
+          fi
           
-          # 4. 创建 gradle-wrapper.properties
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
+          if [ ! -f "settings.gradle" ]; then
+            echo "rootProject.name = 'AndroidApp'" > settings.gradle
+          fi
           
-          # 5. 设置权限
-          chmod +x gradlew
-          echo "gradlew generated successfully"
+          # 生成 wrapper
+          gradle wrapper
+          
+          echo "Gradle wrapper generated"
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+      continue-on-error: true
+    
+    - name: Build Android App
+      run: |
+        if [ -f "./gradlew" ]; then
+          ./gradlew assembleDebug
         else
-          echo "gradlew already exists"
+          echo "Using global gradle"
+          gradle assembleDebug
         fi
     
-    - name: Grant execute permission for gradlew
-      run: chmod +x ./gradlew
-    
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
-    
-    - name: Upload APK
+    - name: Upload build artifacts
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug-apk
-        path: app/build/outputs/apk/debug/*.apk
+        name: android-build
+        path: |
+          app/build/outputs/apk/
+          app/build/reports/
