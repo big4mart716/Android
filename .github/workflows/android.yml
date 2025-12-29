@@ -1,201 +1,84 @@
-  name: Android CI
+
+  name: Android Build - PersonalCard
 
   on:
     push:
       branches: [ "main" ]
     pull_request:
       branches: [ "main" ]
+    workflow_dispatch:
 
   jobs:
     build:
       runs-on: ubuntu-latest
-      env:
-        ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
       steps:
-      - uses: actions/checkout@v4
+        - name: Checkout code
+          uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
+        - name: Set up JDK 17
+          uses: actions/setup-java@v4
+          with:
+            java-version: '17'
+            distribution: 'temurin'
+            cache: gradle
 
-      # ==== 1. 安装 Android SDK 核心组件 ====
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: '12.0'
-          accept-android-sdk-licenses: true
-          packages: platform-tools platforms;android-34 build-tools;34.0.0
+        - name: Setup Android SDK
+          uses: android-actions/setup-android@v3
+          with:
+            cmdline-tools-version: '12.0'
+            accept-android-sdk-licenses: true
 
-      # ==== 2. 验证安装 ====
-      - name: Verify Android SDK installation
-        run: |
-          echo "=== Installed Android SDK packages ==="
-          sdkmanager --list_installed
-          echo ""
-          echo "=== Environment variables ==="
-          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-          echo "ANDROID_HOME: $ANDROID_HOME"
+        - name: Install Android SDK components
+          run: |
+            echo "=== Installing Android SDK components ==="
+            sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+            echo "=== Installed packages ==="
+            sdkmanager --list_installed
 
-      # ==== 3. 可选安装额外的包（不失败）===
-      - name: Install optional packages
-        continue-on-error: true
-        run: |
-          echo "Installing optional packages..."
-
-          optional_packages=(
-            "patcher;v4"
-            "platforms;android-34-ext4"
-            "platforms;android-34-ext8"
-            "cmake;3.22.1"
-            "ndk;25.2.9519653"
-            "emulator"
-          )
-
-          for pkg in "${optional_packages[@]}"; do
-            echo "Trying to install: $pkg"
-            sdkmanager "$pkg" --verbose 2>/dev/null && echo "✓ $pkg installed" || echo "⚠ $pkg not found, skipping"
-          done
-
-      # ==== 4. 检查实际项目结构 ====
-      - name: Check project structure
-        run: |
-          echo "=== 项目根目录结构 ==="
-          ls -la
-          echo ""
-
-          echo "=== PersonalCard 目录结构 ==="
-          if [ -d "PersonalCard" ]; then
-            ls -la PersonalCard/
-
-            echo ""
-            echo "=== PersonalCard 中的 app 目录 ==="
-            if [ -d "PersonalCard/app" ]; then
-              ls -la PersonalCard/app/
+        - name: Grant execute permission for gradlew
+          run: |
+            if [ -f "PersonalCard/gradlew" ]; then
+              chmod +x PersonalCard/gradlew
+              echo "✓ gradlew 权限已设置"
+            else
+              echo "✗ gradlew 文件不存在"
+              exit 1
             fi
-          else
-            echo "PersonalCard 目录不存在"
-          fi
 
-      # ==== 5. 准备构建环境 ====
-      - name: Prepare build environment
-        run: |
-          echo "准备构建环境..."
-
-          if [ -d "PersonalCard" ]; then
-            echo "修复构建配置..."
-
-            # 创建 build.gradle
-            echo "创建 build.gradle..."
-            echo '// Top-level build file' > PersonalCard/build.gradle
-            echo 'buildscript {' >> PersonalCard/build.gradle
-            echo '    repositories {' >> PersonalCard/build.gradle
-            echo '        google()' >> PersonalCard/build.gradle
-            echo '        mavenCentral()' >> PersonalCard/build.gradle
-            echo '    }' >> PersonalCard/build.gradle
-            echo '    dependencies {' >> PersonalCard/build.gradle
-            echo '        classpath "com.android.tools.build:gradle:8.1.0"' >> PersonalCard/build.gradle
-            echo '    }' >> PersonalCard/build.gradle
-            echo '}' >> PersonalCard/build.gradle
-
-            # 修复 settings.gradle
-            echo "修复 settings.gradle..."
-            echo "include ':app'" > PersonalCard/settings.gradle
-            echo "rootProject.name = 'PersonalCard'" >> PersonalCard/settings.gradle
-            echo "" >> PersonalCard/settings.gradle
-            echo "dependencyResolutionManagement {" >> PersonalCard/settings.gradle
-            echo "    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)" >> PersonalCard/settings.gradle
-            echo "    repositories {" >> PersonalCard/settings.gradle
-            echo "        google()" >> PersonalCard/settings.gradle
-            echo "        mavenCentral()" >> PersonalCard/settings.gradle
-            echo "    }" >> PersonalCard/settings.gradle
-            echo "}" >> PersonalCard/settings.gradle
-
-            # 修复 AndroidManifest.xml 移除图标引用
-            echo "修复 AndroidManifest.xml（移除图标引用）..."
-            cat > PersonalCard/app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.example.personalcard">
-              <application
-                  android:allowBackup="true"
-                  android:label="个人名片"
-                  android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-                  <activity
-                      android:name=".InputActivity"
-                      android:exported="false" />
-                  <activity
-                      android:name=".DisplayActivity"
-                      android:exported="false" />
-              </application>
-          </manifest>
-          EOF
-
-            echo "构建配置修复完成"
-          fi
-
-      # ==== 6. 构建 PersonalCard 项目 ====
-      - name: Build PersonalCard project
-        run: |
-          echo "开始构建 PersonalCard 项目..."
-
-          if [ -d "PersonalCard" ]; then
-            echo "切换到 PersonalCard 目录..."
+        - name: Download Gradle wrapper if missing
+          run: |
             cd PersonalCard
-
-            echo "当前目录: $(pwd)"
-            echo "项目结构:"
-            ls -la
-
-            # 安装 Gradle 并创建 gradlew
-            if [ ! -f "./gradlew" ]; then
-              echo "安装 Gradle 并生成 gradlew..."
-              wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-              unzip -q gradle-8.5-bin.zip
-              ./gradle-8.5/bin/gradle wrapper
-              chmod +x ./gradlew
+            if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+              echo "gradle-wrapper.jar is missing, downloading..."
+              mkdir -p gradle/wrapper
+              curl -L -o gradle/wrapper/gradle-wrapper.jar \
+                https://raw.githubusercontent.com/gradle/gradle/v8.2.1/gradle/wrapper/gradle-wrapper.jar
             fi
 
-            # 开始构建
-            echo "开始构建..."
+        - name: Setup Gradle
+          uses: gradle/actions/setup-gradle@v3
+          with:
+            build-root-directory: PersonalCard
+
+        - name: Build with Gradle
+          run: |
+            cd PersonalCard
             ./gradlew assembleDebug --stacktrace
-          else
-            echo "错误：找不到 PersonalCard 目录"
-            exit 1
-          fi
 
-      # ==== 7. 检查构建输出 ====
-      - name: Check build outputs
-        run: |
-          echo "=== 查找生成的 APK 文件 ==="
-
-          if [ -d "PersonalCard/app/build/outputs" ]; then
-            echo "在 PersonalCard/app/build/outputs/ 中查找..."
-            find PersonalCard/app/build/outputs/ -name "*.apk" 2>/dev/null
-
+        - name: List build outputs
+          if: always()
+          run: |
+            echo "=== Checking build outputs ==="
+            ls -R PersonalCard/app/build/outputs/ 2>/dev/null || echo "No outputs directory found"
             echo ""
-            echo "=== APK 文件详情 ==="
-            find PersonalCard/app/build/outputs/ -name "*.apk" -exec ls -lh {} \; 2>/dev/null
-          else
-            echo "PersonalCard/app/build/outputs/ 不存在"
-          fi
+            echo "=== Looking for APK files ==="
+            find PersonalCard -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
 
-      # ==== 8. 上传构建产物 ====
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: PersonalCard-APK
-          path: PersonalCard/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+        - name: Upload Debug APK
+          uses: actions/upload-artifact@v4
+          if: success()
+          with:
+            name: PersonalCard-debug
+            path: PersonalCard/app/build/outputs/apk/debug/*.apk
+            if-no-files-found: error
