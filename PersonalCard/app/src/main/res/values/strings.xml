@@ -1,16 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">个人名片</string>
+
+    <!-- Main Activity -->
     <string name="welcome_title">欢迎使用个人名片应用</string>
     <string name="welcome_desc">这是一个简单的个人信息管理应用</string>
     <string name="btn_start">开始创建名片</string>
+
+    <!-- Card List -->
+    <string name="card_list_title">我的名片</string>
+    <string name="search_hint">搜索姓名或学号</string>
+    <string name="empty_card_list">还没有名片，点击 + 添加</string>
+    <string name="add_card">添加名片</string>
+
+    <!-- Edit/Create Card -->
     <string name="input_title">填写个人信息</string>
+    <string name="title_new_card">新建名片</string>
+    <string name="title_edit_card">编辑名片</string>
+    <string name="tap_to_add_avatar">点击添加头像</string>
+    <string name="choose_avatar_source">选择头像来源</string>
+    <string name="camera">拍照</string>
+    <string name="gallery">相册</string>
+
+    <!-- Card Detail -->
+    <string name="btn_edit">编辑</string>
+    <string name="btn_delete">删除</string>
+    <string name="confirm_delete_title">确认删除</string>
+    <string name="confirm_delete_message">确定要删除这张名片吗？</string>
+    <string name="btn_confirm">确定</string>
+    <string name="btn_cancel">取消</string>
+
+    <!-- Input Fields -->
     <string name="hint_name">请输入姓名</string>
     <string name="hint_student_id">请输入学号</string>
     <string name="hint_major">请输入专业</string>
     <string name="hint_phone">请输入联系电话</string>
     <string name="hint_email">请输入电子邮箱</string>
     <string name="btn_submit">提交信息</string>
+    <string name="btn_save">保存</string>
+
+    <!-- Display Labels -->
     <string name="display_title">我的名片</string>
     <string name="label_name">姓名：</string>
     <string name="label_student_id">学号：</string>
@@ -18,5 +47,18 @@
     <string name="label_phone">电话：</string>
     <string name="label_email">邮箱：</string>
     <string name="btn_back">返回首页</string>
+
+    <!-- Validation -->
+    <string name="error_name_empty">请输入姓名</string>
+    <string name="error_student_id_empty">请输入学号</string>
+    <string name="error_email_invalid">邮箱格式不正确</string>
+    <string name="error_phone_invalid">电话格式不正确</string>
     <string name="toast_fill_all">请填写所有信息</string>
+
+    <!-- Toast Messages -->
+    <string name="toast_save_success">保存成功</string>
+    <string name="toast_delete_success">删除成功</string>
+    <string name="toast_permission_denied">需要权限才能使用此功能</string>
+    <string name="toast_loading">加载中...</string>
 </resources>
+
